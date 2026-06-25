@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: langchain_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  openfga:
+    image: openfga/openfga:latest
+    container_name: langchain_openfga
+    depends_on:
+      - postgres
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: 'postgres://postgres:password@postgres:5432/postgres?sslmode=disable'
+    command: run
+    ports:
+      - "8080:8080" # HTTP
+      - "8081:8081" # gRPC
+      - "3000:3000" # Playground
+
+volumes:
+  postgres_data:
