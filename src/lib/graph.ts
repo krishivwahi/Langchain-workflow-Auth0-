@@ -2,6 +2,7 @@ import { StateGraph, Annotation } from "@langchain/langgraph";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
 import { Pool } from "pg";
 import { secureAuthNode } from "./authNode";
+import { tokenExchangeNode } from "./tokenExchangeNode";
 
 // This represents the data that gets passed around between your nodes
 export const GraphState = Annotation.Root({
@@ -11,6 +12,8 @@ export const GraphState = Annotation.Root({
   }),
   // Will use to track if a user is authenticated
   hasValidToken: Annotation<boolean>(), 
+  accessToken: Annotation<string>(),
+  boundToken: Annotation<string>(),
 });
 
 //Initializing the Postgres Checkpointer
@@ -22,12 +25,14 @@ export const checkpointer = new PostgresSaver(pool);
 // State Graph
 const workflow = new StateGraph(GraphState)
   .addNode("secure_auth", secureAuthNode)
+  .addNode("token_exchange", tokenExchangeNode)
   .addNode("dummy_node", async (state) => {
-    console.log("Graph is running!");
+    console.log("Graph is running with bound token!", state.boundToken);
     return { messages: ["Hello from the graph!"] };
   })
   .addEdge("__start__", "secure_auth")
-  .addEdge("secure_auth", "dummy_node");
+  .addEdge("secure_auth", "token_exchange")
+  .addEdge("token_exchange", "dummy_node");
 
 // 4. Compiling the graph with our Postgres checkpointer!
 export const appGraph = workflow.compile({ checkpointer });
